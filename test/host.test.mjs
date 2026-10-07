@@ -73,7 +73,7 @@ async function harness(t, { header = {}, events = [], complete, initialEnabled, 
   }
 }
 
-test('latest runtime: first request has official Bash, reduced prompt/context; later request restores executing tool', async t => {
+test('selected runtime: first request has official Bash, reduced prompt/context; later request restores executing tool', async t => {
   const h = await harness(t)
   const first = await h.assemble()
   assert.deepEqual(first.sections.map(section => section.text), [persona])

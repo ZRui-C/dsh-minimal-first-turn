@@ -35,12 +35,16 @@
   },
   "homepage": "https://github.com/ZRui-C/dsh-minimal-first-turn#readme",
   "peerDependencies": {
-    "@deepseek-ai/dsh-terminal": "0.2.1-alpha.1",
-    "@deepseek-ai/dsh-terminal-bash": "0.2.1-alpha.1",
-    "@deepseek-ai/dsh-tool-bash-persistent": "0.2.1-alpha.1"
+    "@deepseek-ai/dsh-terminal": "0.2.0-rc.2 || 0.2.1-alpha.1",
+    "@deepseek-ai/dsh-terminal-bash": "0.2.0-rc.2 || 0.2.1-alpha.1",
+    "@deepseek-ai/dsh-tool-bash-persistent": "0.2.0-rc.2 || 0.2.1-alpha.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5-alpha.1",
+    "@deepseek-ai/cordis-plugin-group": "1.0.5-alpha.1",
+    "@deepseek-ai/cordis-plugin-include": "1.0.10-alpha.1",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.6-alpha.1",
+    "@deepseek-ai/dsh-app-boot": "0.2.1-alpha.1",
     "@deepseek-ai/dsh-scope": "0.2.1-alpha.1",
     "@deepseek-ai/dsh-session": "0.2.1-alpha.1",
     "@deepseek-ai/dsh-session-projection": "0.2.1-alpha.1",
@@ -63,7 +67,8 @@
   "scripts": {
     "check": "node --check src/client.cjs && node --check src/host.mjs && node --input-type=module -e \"import('./src/host.mjs')\" && node --test",
     "pack:dry-run": "npm pack --dry-run",
-    "test": "node --test"
+    "test": "node --test",
+    "test:select-runtime": "node scripts/select-test-runtime.mjs"
   },
   "engines": {
     "node": ">=22"

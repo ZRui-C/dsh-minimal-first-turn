@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- Target DSH `0.2.1-alpha.1` and its current Bash-only Minimal preset.
+- Also validate DSH `0.2.0-rc.2` and allow it explicitly alongside `0.2.1-alpha.1`.
+- Run the full behavioral suite plus the real compatibility gate and bundle
+  metadata checks against both pinned runtime/Cordis families on Node 22/24.
+- Document GitHub installation separately from the npm dependency registry.
+
+- Align with the current Bash-only Minimal preset.
 - Replace removed `Session.events` access with a durable session projection.
 - Fix resume, compaction, off/on toggles, child exclusion, and tool-provider restoration.
 - Reassemble after registry changes; fall back atomically for protected complete
