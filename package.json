@@ -35,18 +35,20 @@
   },
   "homepage": "https://github.com/ZRui-C/dsh-minimal-first-turn#readme",
   "peerDependencies": {
-    "@deepseek-ai/dsh-fs-local": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-terminal": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-terminal-bash": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-tool-bash-persistent": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-tool-str-replace-editor": "0.1.0-rc.6"
+    "@deepseek-ai/dsh-terminal": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-terminal-bash": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-tool-bash-persistent": "0.2.1-alpha.1"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-fs-local": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-terminal": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-terminal-bash": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-tool-bash-persistent": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-tool-str-replace-editor": "0.1.0-rc.6"
+    "@deepseek-ai/cordis": "4.0.5-alpha.1",
+    "@deepseek-ai/dsh-scope": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-session": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-session-projection": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-system-prompt": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-terminal": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-terminal-bash": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-tool-bash-persistent": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-tools": "0.2.1-alpha.1"
   },
   "dsh": {
     "bundle": {
@@ -59,13 +61,17 @@
     }
   },
   "scripts": {
-    "check": "node --check src/client.cjs && node --input-type=module -e \"import('./src/host.mjs')\"",
-    "pack:dry-run": "npm pack --dry-run"
+    "check": "node --check src/client.cjs && node --check src/host.mjs && node --input-type=module -e \"import('./src/host.mjs')\" && node --test",
+    "pack:dry-run": "npm pack --dry-run",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=22"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
   }
 }
