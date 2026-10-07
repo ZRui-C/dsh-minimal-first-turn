@@ -12,24 +12,30 @@ This project is independent, experimental, and not affiliated with DeepSeek.
 
 ## What It Does
 
-While **First-turn minimal** is enabled:
+For compatible presets, while **First-turn minimal** is enabled:
 
 1. A new root session's first request uses the Minimal system prompt.
-2. The model sees only the official Minimal tool pair: persistent `bash` and
-   `str_replace_editor`.
+2. The model sees only the current official Minimal tool: persistent `bash`.
+   DSH removed `str_replace_editor` from that preset in September 2026.
 3. Automatic workspace-instruction and skill-catalog messages are removed from
-   that request.
+   that request. Instruction messages are carried to the next pre-step so
+   one-shot nested-directory updates are not lost. Deferred instructions are
+   recorded in the session log and survive restart until committed to history.
 4. The first durable `tool/call` or `assistant/message` restores the selected
    preset's original prompt and complete tool catalog.
 5. After `compaction/end`, the next request enters the same controlled phase.
 
 The composer contains a persistent **首轮精简** switch. It is global to the
 current DSH home, not per-session. Disabling it removes this plugin's
-agent-scoped Minimal tools and stops all filtering for future requests.
+agent-scoped Minimal tools before the next model request and stops filtering
+for that request. An already assembled request and its tool batch finish with
+the same provider, so toggling cannot unload a tool before it executes.
 
 ## Installation
 
-This package targets DSH Web with `@deepseek-ai/*` `0.1.0-rc.6` packages.
+This working version targets DSH Web `0.2.1-alpha.1` (upstream tag
+`dsh-v0.2.1-alpha.1`, commit `5badb15009ae1756c3afe0ae0cef1faafc290ccc`).
+It is not compatible with the former `0.1.0-rc.6` dependency set.
 A persistent Bash PTY is required, so the current release supports macOS and
 Linux hosts; Windows is not supported yet.
 
@@ -67,8 +73,26 @@ running.
   guarantee a particular reasoning phrase or outcome.
 - Its behavior is intentionally limited to root sessions; subagents keep their
   original catalog.
-- The first-turn effect is derived from durable session events, so resume and
-  compaction preserve the phase correctly.
+- The first-turn phase uses the current session-projection registry. Resume,
+  compaction, and events recorded while the switch is off preserve it correctly.
+- Custom complete system prompts are protected by current DSH. If their text
+  differs from Minimal, the plugin leaves the entire request unchanged and logs
+  a warning. It does not override that protection. The official Minimal complete
+  prompt remains supported.
+- PTC-only tool presentation and same-agent-scope Bash registration conflicts
+  also fall back to the original request. A compatible native Bash catalog is
+  required; no partial prompt/message filtering is applied after a failed mount.
+- The temporary Bash provider is retained through its first tool batch, then
+  removed before the next assembled request restores the preset's own Bash.
+  Persistent shell state from the bootstrap shell is not transferred to the
+  preset's shell; filesystem changes remain on disk.
+- The toggle endpoint uses DSH Connection's Host/Origin checks and browser
+  authentication. The browser route is document-relative for mounted Web URLs.
+- `pnpm check` runs syntax/import validation and behavioral tests. Host tests use
+  the actual pinned Cordis, prompt/tool registries, and official Bash registration;
+  projection tests use the current Session and projection registry. Client tests
+  use a lightweight hook harness. No live model request, PTY command, full browser,
+  or Mac integration test is claimed.
 - DeepSeek Harness is a developer preview. Pin the supported DSH package
   versions when using this in production.
 
@@ -81,9 +105,13 @@ attribution is included in [LICENSE](LICENSE).
 ## 中文说明
 
 这是一个 DSH Web 插件。开启“首轮精简”后，新根会话的第一轮模型请求会使用
-Minimal system prompt、持久 `bash` 与 `str_replace_editor`，并移除自动注入的
+Minimal system prompt 与持久 `bash`（与当前官方 Minimal 一致），并移除自动注入的
 工作区说明和技能目录。首次 `tool/call` 或 `assistant/message` 后，当前预设的
 完整 prompt 与工具目录恢复；发生上下文压缩后，下一轮会再次进入首轮精简阶段。
 
 它不保证模型输出固定的推理措辞，只控制模型可见的首轮条件。开关是全局持久设置，
 而不是单个会话设置。
+
+当前开发版本适配 DSH `0.2.1-alpha.1`，不再兼容旧的 `0.1.0-rc.6`。自定义完整
+system prompt、PTC-only 工具模式或同一 agent scope 内的 Bash 冲突会保持原请求，
+并记录警告。关闭开关从下一次请求组装生效，不会打断已经选定的工具调用。

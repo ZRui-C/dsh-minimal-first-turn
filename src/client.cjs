@@ -6,6 +6,8 @@ window.__ModuleLoader__.load({
     var React = require('react')
 
     var STATE_ENDPOINT = '/minimal-first-turn/state'
+    // DSH's document base owns reverse-proxy mounts; host route keys stay absolute.
+    var STATE_ROUTE = STATE_ENDPOINT.slice(1)
     var CSS = `
 .dmft-toggle{display:inline-flex;align-items:center;gap:7px;min-height:28px;color:var(--dsw-alias-label-secondary,#5f6b76);font-family:inherit;font-size:12px;line-height:1;white-space:nowrap}
 .dmft-label{font-weight:600}
@@ -14,7 +16,10 @@ window.__ModuleLoader__.load({
 .dmft-switch[data-enabled='true']{background:#188455;border-color:#188455}
 .dmft-switch[data-enabled='true']::after{transform:translateX(14px)}
 .dmft-switch:focus-visible{outline:2px solid #2b75d6;outline-offset:2px}
-.dmft-switch:disabled{cursor:wait;opacity:.6}
+.dmft-switch:disabled{cursor:default;opacity:.6}
+.dmft-switch[aria-busy='true']{cursor:wait}
+.dmft-error{color:var(--dsw-alias-label-danger,#b42318);white-space:normal;line-height:1.3}
+.dmft-retry{font:inherit;color:inherit;background:none;border:1px solid currentColor;border-radius:4px;padding:3px 5px;cursor:pointer}
 `
 
     function injectCss(css) {
@@ -27,63 +32,100 @@ window.__ModuleLoader__.load({
       return function () { style.remove() }
     }
 
-    function request(options) {
-      return fetch(STATE_ENDPOINT, options).then(function (response) {
-        return response.json().then(function (body) {
-          if (!response.ok) throw new Error(body.error || 'minimal-first-turn state request failed')
-          return body
-        })
-      })
+    async function request(options) {
+      var response = await fetch(STATE_ROUTE, options)
+      if (!response.ok) throw new Error('minimal-first-turn state request failed')
+      var body = await response.json()
+      if (body === null || typeof body !== 'object' || Array.isArray(body) || typeof body.enabled !== 'boolean') {
+        throw new Error('Invalid minimal-first-turn state response')
+      }
+      return body
     }
 
     function MinimalFirstTurnToggle() {
-      var state = React.useState(null)
-      var enabled = state[0]
-      var setEnabled = state[1]
-      var savingState = React.useState(false)
-      var saving = savingState[0]
-      var setSaving = savingState[1]
+      var state = React.useState({ enabled: null, status: 'loading', error: '' })
+      var view = state[0]
+      var setView = state[1]
+      var lifecycleRef = React.useRef(null)
+
+      function loadState(lifecycle) {
+        if (!lifecycle || !lifecycle.active || lifecycle.busy) return
+        lifecycle.busy = true
+        lifecycle.enabled = null
+        setView({ enabled: null, status: 'loading', error: '' })
+        request({ method: 'GET', cache: 'no-store' }).then(function (body) {
+          if (!lifecycle.active) return
+          lifecycle.busy = false
+          lifecycle.enabled = body.enabled
+          setView({ enabled: body.enabled, status: 'ready', error: '' })
+        }, function () {
+          if (!lifecycle.active) return
+          lifecycle.busy = false
+          setView({ enabled: null, status: 'error', error: '无法读取首轮精简状态，请重试。' })
+        })
+      }
 
       React.useEffect(function () {
-        var active = true
-        request({ method: 'GET', cache: 'no-store' }).then(function (body) {
-          if (active) setEnabled(body.enabled === true)
-        }).catch(function () {
-          if (active) setEnabled(false)
-        })
-        return function () { active = false }
+        // Each effect lifetime owns its requests, including Strict Mode replays.
+        var lifecycle = { active: true, busy: false, enabled: null }
+        lifecycleRef.current = lifecycle
+        loadState(lifecycle)
+        return function () { lifecycle.active = false }
       }, [])
 
       function toggle() {
-        if (saving || enabled === null) return
-        var next = !enabled
-        setSaving(true)
+        var lifecycle = lifecycleRef.current
+        if (!lifecycle || !lifecycle.active || lifecycle.busy || lifecycle.enabled === null) return
+        var next = !lifecycle.enabled
+        // A ref locks synchronously, before React commits the disabled button.
+        lifecycle.busy = true
+        setView({ enabled: lifecycle.enabled, status: 'saving', error: '' })
         request({
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ enabled: next }),
         }).then(function (body) {
-          setEnabled(body.enabled === true)
-        }).catch(function () {
-          setEnabled(enabled)
-        }).finally(function () {
-          setSaving(false)
+          if (!lifecycle.active) return
+          lifecycle.busy = false
+          lifecycle.enabled = body.enabled
+          setView({ enabled: body.enabled, status: 'ready', error: '' })
+        }, function () {
+          if (!lifecycle.active) return
+          lifecycle.busy = false
+          // A failed response does not prove the server rejected the write.
+          // Read the authoritative state again before allowing another toggle.
+          lifecycle.enabled = null
+          setView({ enabled: null, status: 'error', error: '保存失败，请重试以确认当前状态。' })
         })
       }
 
-      var ready = enabled !== null
-      return React.createElement('div', { className: 'dmft-toggle', title: '让新会话的第一轮使用精简 prompt 与工具' },
+      var known = view.enabled !== null
+      var busy = view.status === 'loading' || view.status === 'saving'
+      var status = view.status === 'loading' ? '加载中…' : view.status === 'saving' ? '保存中…' : ''
+      return React.createElement('div', {
+        className: 'dmft-toggle',
+        title: '让新会话的第一轮使用精简 prompt 与工具',
+      },
         React.createElement('span', { className: 'dmft-label' }, '首轮精简'),
         React.createElement('button', {
           className: 'dmft-switch',
           type: 'button',
-          role: 'switch',
-          'aria-checked': enabled === true,
-          'aria-label': '首轮精简',
-          'data-enabled': enabled === true ? 'true' : 'false',
-          disabled: !ready || saving,
+          role: known ? 'switch' : undefined,
+          'aria-checked': known ? view.enabled : undefined,
+          'aria-label': known ? '首轮精简' : '首轮精简（状态未知）',
+          'aria-busy': busy,
+          'data-enabled': known ? String(view.enabled) : undefined,
+          disabled: view.status !== 'ready',
           onClick: toggle,
-        }))
+        }),
+        React.createElement('span', { role: 'status', 'aria-live': 'polite' }, status),
+        view.error ? React.createElement('span', { className: 'dmft-error', role: 'alert' }, view.error) : null,
+        view.error ? React.createElement('button', {
+          className: 'dmft-retry',
+          type: 'button',
+          'aria-label': '重新读取首轮精简状态',
+          onClick: function () { loadState(lifecycleRef.current) },
+        }, '重试') : null)
     }
 
     var plugin = {
