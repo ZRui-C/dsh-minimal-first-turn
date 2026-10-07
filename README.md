@@ -33,15 +33,22 @@ the same provider, so toggling cannot unload a tool before it executes.
 
 ## Installation
 
-This working version targets DSH Web `0.2.1-alpha.1` (upstream tag
-`dsh-v0.2.1-alpha.1`, commit `5badb15009ae1756c3afe0ae0cef1faafc290ccc`).
-It is not compatible with the former `0.1.0-rc.6` dependency set.
+This working version is validated with DSH Web **`0.2.0-rc.2` and
+`0.2.1-alpha.1`**. Peer requirements explicitly allow these two versions, not
+an untested continuous version range. The former `0.1.0-rc.6` is unsupported.
+
+The repairs are available from GitHub; merging them does not publish a new npm
+release. To install the GitHub version and keep the dependency registry separate:
 A persistent Bash PTY is required, so the current release supports macOS and
 Linux hosts; Windows is not supported yet.
 
 ```bash
-dsh plugin --profile web add dsh-minimal-first-turn
+dsh plugin --profile web add "github:ZRui-C/dsh-minimal-first-turn#main" --registry=https://registry.npmjs.org/
 ```
+
+The GitHub address is the package spec; `--registry` is an npm registry, never
+a GitHub repository URL. This flag applies only to this installation. Do not use
+`allow-version` to bypass a version mismatch.
 
 Restart the existing `dsh web` process, then open a conversation. The
 **首轮精简** switch appears beside the composer controls.
@@ -89,7 +96,8 @@ running.
 - The toggle endpoint uses DSH Connection's Host/Origin checks and browser
   authentication. The browser route is document-relative for mounted Web URLs.
 - `pnpm check` runs syntax/import validation and behavioral tests. Host tests use
-  the actual pinned Cordis, prompt/tool registries, and official Bash registration;
+  both pinned DSH/Cordis families, prompt/tool registries, official Bash registration,
+  and each runtime's real plugin compatibility gate without exemptions;
   projection tests use the current Session and projection registry. Client tests
   use a lightweight hook harness. No live model request, PTY command, full browser,
   or Mac integration test is claimed.
@@ -112,6 +120,22 @@ Minimal system prompt 与持久 `bash`（与当前官方 Minimal 一致），并
 它不保证模型输出固定的推理措辞，只控制模型可见的首轮条件。开关是全局持久设置，
 而不是单个会话设置。
 
-当前开发版本适配 DSH `0.2.1-alpha.1`，不再兼容旧的 `0.1.0-rc.6`。自定义完整
+当前开发版本已验证 DSH `0.2.0-rc.2` 与 `0.2.1-alpha.1`，不支持旧的 `0.1.0-rc.6`。自定义完整
 system prompt、PTC-only 工具模式或同一 agent scope 内的 Bash 冲突会保持原请求，
 并记录警告。关闭开关从下一次请求组装生效，不会打断已经选定的工具调用。
+
+### Testing the runtime matrix
+
+The default lockfile tests `0.2.1-alpha.1`. CI also selects `0.2.0-rc.2` with
+its matching frozen fixture lockfile and Cordis packages, on Node 22 and 24:
+
+```bash
+node scripts/select-test-runtime.mjs 0.2.0-rc.2
+cp test/fixtures/pnpm-lock.rc2.yaml pnpm-lock.yaml
+pnpm install --frozen-lockfile
+DSH_TEST_VERSION=0.2.0-rc.2 pnpm check
+```
+
+Run the alternate selection in a disposable checkout. The selection script
+changes development dependencies only; it never relaxes the published peer
+requirements or the DSH compatibility guard.
